@@ -1,12 +1,165 @@
+# Network Quest: The Race to Root Access
+
+This folder contains a ready-to-deploy setup for hosting the interactive networking quiz game online.
+
+---
+
+## 📦 Folder Structure
+```
+network-quest/
+├── index.html
+├── README.md
+└── assets/
+    ├── sounds/
+    │   ├── correct.ogg
+    │   ├── wrong.ogg
+    │   └── levelup.ogg
+    └── favicon.ico
+```
+
+---
+
+## 🚀 Hosting on GitHub Pages
+
+1. **Create a new GitHub repository** named `network-quest` (or any name you like).
+2. Upload the contents of this folder to your repository.
+3. Go to your repository’s settings → **Pages** → set the source to **main branch** and root `/`.
+4. Wait about 30 seconds, then your game will be live at:
+   ```
+   https://yourusername.github.io/network-quest/
+   ```
+
+---
+
+## 💻 index.html
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Network Quest: The Race to Root Access</title>
+  <link rel="icon" href="assets/favicon.ico">
+  <meta name="description" content="Test your networking knowledge in this interactive game designed for Grade 12 Computer Engineering students in Ontario!">
+  <style>
+    body {font-family: 'Consolas', monospace; background: radial-gradient(circle at top, #0a0a0a, #111); color: #00ffcc; text-align: center; padding: 40px;}
+    #game {max-width: 800px; margin: auto; background: rgba(0, 0, 0, 0.7); padding: 20px; border-radius: 15px; box-shadow: 0 0 20px #00ffcc; transition: all 0.5s ease;}
+    button {background-color: #00ffcc; color: #000; border: none; padding: 10px 20px; margin: 10px; border-radius: 8px; cursor: pointer; font-size: 1.1em; transition: transform 0.2s ease, background-color 0.3s ease;}
+    button:hover {background-color: #00bfa5; transform: scale(1.05);}
+    .hidden {display: none;}
+    #progressBar {height: 20px; width: 100%; background: #333; border-radius: 10px; overflow: hidden; margin-bottom: 20px;}
+    #progressFill {height: 100%; width: 0%; background: linear-gradient(90deg, #00ffcc, #00bfa5); transition: width 0.4s ease;}
+    #feedback {margin-top: 20px; min-height: 60px; transition: all 0.5s ease;}
+    @keyframes fadeIn {from {opacity: 0; transform: translateY(10px);} to {opacity: 1; transform: translateY(0);}}
+    .fadeIn {animation: fadeIn 0.6s ease forwards;}
+  </style>
 </head>
 <body>
-  <h1>Network Quest Game</h1>
-  <p>Upload the full HTML/JS version of the game here.</p>
+  <audio id="correctSound" src="assets/sounds/correct.ogg"></audio>
+  <audio id="wrongSound" src="assets/sounds/wrong.ogg"></audio>
+  <audio id="levelUpSound" src="assets/sounds/levelup.ogg"></audio>
+
+  <div id="game" class="fadeIn">
+    <h1>🕹️ Network Quest: The Race to Root Access</h1>
+    <div id="story">Welcome to NetLab Industries, recruit! Your mission: reclaim Root Access by answering 10 networking challenges.</div>
+    <div id="progressBar"><div id="progressFill"></div></div>
+    <div id="question"></div>
+    <div id="answers"></div>
+    <div id="feedback"></div>
+    <button id="nextBtn" class="hidden">Next</button>
+  </div>
+
+  <script>
+    const correctSound = document.getElementById('correctSound');
+    const wrongSound = document.getElementById('wrongSound');
+    const levelUpSound = document.getElementById('levelUpSound');
+
+    const questions = [
+      { q: 'What device connects multiple computers within a local network?', options: ['Router', 'Switch', 'Modem', 'Firewall'], correct: 1, explanation: 'A switch connects multiple devices on the same local area network (LAN).' },
+      { q: 'Which topology connects each computer to a central hub?', options: ['Bus', 'Ring', 'Star', 'Mesh'], correct: 2, explanation: 'A star topology connects all nodes to a central hub or switch.' },
+      { q: 'What does IP stand for?', options: ['Internet Protocol', 'Internal Process', 'Interface Program', 'Internet Port'], correct: 0, explanation: 'IP stands for Internet Protocol, used to address and route packets across networks.' },
+      { q: 'In an IPv4 address, how many bits are there?', options: ['32', '64', '16', '128'], correct: 0, explanation: 'IPv4 uses a 32-bit addressing scheme.' },
+      { q: 'Which OSI layer is responsible for end-to-end communication and reliability?', options: ['Transport', 'Network', 'Data Link', 'Session'], correct: 0, explanation: 'The Transport layer (Layer 4) ensures reliable transmission with TCP.' },
+      { q: 'What protocol automatically assigns IP addresses to devices?', options: ['DNS', 'DHCP', 'HTTP', 'FTP'], correct: 1, explanation: 'DHCP (Dynamic Host Configuration Protocol) assigns IP addresses automatically.' },
+      { q: 'Which device converts digital signals to analog for transmission?', options: ['Router', 'Hub', 'Modem', 'Switch'], correct: 2, explanation: 'A modem (modulator-demodulator) converts signals for data transmission.' },
+      { q: 'Which Wi-Fi standard operates at 5 GHz and offers higher speeds?', options: ['802.11b', '802.11g', '802.11n', '802.11ac'], correct: 3, explanation: '802.11ac (Wi-Fi 5) operates at 5 GHz and provides faster data rates.' },
+      { q: 'You can’t connect to a website. The IP address works but the domain doesn’t. Which service is likely down?', options: ['DHCP', 'DNS', 'HTTP', 'FTP'], correct: 1, explanation: 'DNS translates domain names to IP addresses; if it’s down, the name won’t resolve.' },
+      { q: 'Which of the following helps protect against unauthorized network access?', options: ['Router', 'Switch', 'Firewall', 'Repeater'], correct: 2, explanation: 'A firewall filters incoming and outgoing network traffic based on security rules.' }
+    ];
+
+    let current = 0;
+    let score = 0;
+
+    const question = document.getElementById('question');
+    const answers = document.getElementById('answers');
+    const feedback = document.getElementById('feedback');
+    const nextBtn = document.getElementById('nextBtn');
+    const progressFill = document.getElementById('progressFill');
+
+    function loadQuestion() {
+      feedback.textContent = '';
+      nextBtn.classList.add('hidden');
+      const q = questions[current];
+      question.textContent = `Level ${current + 1}: ${q.q}`;
+      answers.innerHTML = '';
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.onclick = () => checkAnswer(i);
+        answers.appendChild(btn);
+      });
+      progressFill.style.width = `${(current / questions.length) * 100}%`;
+    }
+
+    function checkAnswer(i) {
+      const q = questions[current];
+      if (i === q.correct) {
+        correctSound.play();
+        feedback.innerHTML = `<span style='color:#00ff88;'>✔ Correct! You earned a Network Key.</span>`;
+        score++;
+      } else {
+        wrongSound.play();
+        feedback.innerHTML = `<span style='color:#ff5555;'>✖ Firewall Triggered!</span><br>${q.explanation}`;
+      }
+      nextBtn.classList.remove('hidden');
+      Array.from(answers.children).forEach(btn => btn.disabled = true);
+    }
+
+    nextBtn.onclick = () => {
+      current++;
+      if (current < questions.length) {
+        levelUpSound.play();
+        document.getElementById('game').classList.remove('fadeIn');
+        void document.getElementById('game').offsetWidth;
+        document.getElementById('game').classList.add('fadeIn');
+        loadQuestion();
+      } else {
+        endGame();
+      }
+    };
+
+    function endGame() {
+      question.textContent = '🏁 Mission Complete!';
+      answers.innerHTML = '';
+      feedback.innerHTML = `You answered ${score} out of ${questions.length} correctly.<br>` +
+        (score === 10 ? 'You achieved ROOT ACCESS! 👑' : 'Keep training, future network admin!');
+      nextBtn.classList.add('hidden');
+      progressFill.style.width = '100%';
+    }
+
+    loadQuestion();
+  </script>
 </body>
 </html>
+```
+
+---
+
+## 🧠 Credits
+- Designed for Ontario Grade 12 Computer Engineering (Networking unit)
+- Developed by Jim Cater & GPT-5
+- Sound effects: Google Actions sound library
+
+---
+
+Once hosted, your game will be playable on desktop and mobile devices!
